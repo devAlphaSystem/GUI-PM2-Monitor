@@ -38,7 +38,7 @@
   "log_not_found": "Caminho do arquivo de log para {log_type} não encontrado.",
   "config_title": "Configuração",
   "auto_refresh_interval": "Intervalo de Atualização (s):",
-  "theme": "Tema:",
+  "theme": "Tema Selecionado:",
   "save": "Salvar",
   "invalid_input": "Entrada Inválida",
   "invalid_input_message": "Por favor, insira um número inteiro não negativo válido para o intervalo.",
@@ -59,5 +59,10 @@
   "status": "Status",
   "cpu_(%)": "CPU (%)",
   "memory_(mb)": "Memória (MB)",
-  "uptime": "Tempo de Atividade"
+  "uptime": "Tempo de Atividade",
+  "font_size": "Tamanho da Fonte",
+  "host": "Host",
+  "port": "Porta",
+  "username": "Usuário",
+  "password": "Senha"
 }

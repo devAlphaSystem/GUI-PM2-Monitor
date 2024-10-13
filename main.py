@@ -3,7 +3,7 @@ import tkinter as tk
 from tkinter import messagebox
 from ttkbootstrap import Style, Frame, Button, Entry, Label, Treeview, Scrollbar
 from ttkbootstrap.constants import *
-from tkinter import ttk 
+from tkinter import ttk
 import json
 import threading
 import time
@@ -39,6 +39,7 @@ SUPPORTED_LANGUAGES = ['en', 'pt_br', 'es', 'fr', 'de']
 DEFAULT_AUTO_REFRESH_INTERVAL = 30
 DEFAULT_THEME = 'superhero'
 REQUIRED_COMMANDS = ['pm2', 'mpstat', 'free', 'top', 'awk', 'grep', 'tail']
+DEFAULT_FONT_SIZE = 10
 
 # -------------------- Internationalization (i18n) -------------------- #
 
@@ -147,12 +148,14 @@ class ConfigHandler:
     def get_preferences(self):
         return {
             'auto_refresh_interval': self.config.get('auto_refresh_interval', DEFAULT_AUTO_REFRESH_INTERVAL),
-            'theme': self.config.get('theme', DEFAULT_THEME)
+            'theme': self.config.get('theme', DEFAULT_THEME),
+            'font_size': self.config.get('font_size', DEFAULT_FONT_SIZE)
         }
     
-    def set_preferences(self, auto_refresh_interval, theme):
+    def set_preferences(self, auto_refresh_interval, theme, font_size):
         self.config['auto_refresh_interval'] = auto_refresh_interval
         self.config['theme'] = theme
+        self.config['font_size'] = font_size
         self.save_config()
 
 config_handler = ConfigHandler()
@@ -199,7 +202,7 @@ class SSHClientWrapper:
         for cmd in REQUIRED_COMMANDS:
             check_cmd = f'command -v {cmd}'
             output = self.execute_command(check_cmd)
-            if not output.strip():
+            if not output or not output.strip():
                 missing_commands.append(cmd)
         if missing_commands:
             message = translator.translate("missing_command_message", command=", ".join(missing_commands))
@@ -439,7 +442,7 @@ class ConfigWindow:
 
         self.window = tk.Toplevel(master)
         self.window.title(translator.translate("config_title"))
-        self.window.geometry("400x350")
+        self.window.geometry("450x400")
         self.window.grab_set()
 
         self.window.columnconfigure(1, weight=1)
@@ -493,6 +496,13 @@ class ConfigWindow:
         self.theme_menu = ttk.Combobox(self.pref_frame, textvariable=self.theme_var, values=self.theme_options, state='readonly')
         self.theme_menu.grid(row=1, column=1, padx=10, pady=5, sticky='we')
 
+        self.font_size_label = Label(self.pref_frame, text=translator.translate("font_size"))
+        self.font_size_label.grid(row=2, column=0, padx=10, pady=5, sticky='e')
+
+        self.font_size_var = tk.IntVar(value=self.app.font_size)
+        self.font_size_entry = Entry(self.pref_frame, textvariable=self.font_size_var)
+        self.font_size_entry.grid(row=2, column=1, padx=10, pady=5, sticky='we')
+
         self.save_button = Button(self.window, text=translator.translate("save"), command=self.save_config)
         self.save_button.pack(pady=(10, 10))
 
@@ -522,8 +532,16 @@ class ConfigWindow:
             messagebox.showerror(translator.translate("invalid_theme"), translator.translate("invalid_theme_message"))
             return
 
+        try:
+            font_size = self.font_size_var.get()
+            if font_size < 6 or font_size > 30:
+                raise ValueError
+        except (tk.TclError, ValueError):
+            messagebox.showerror(translator.translate("invalid_input"), translator.translate("invalid_font_size_message"))
+            return
+
         config_handler.set_server_details(host, port, username, password)
-        config_handler.set_preferences(interval, selected_theme)
+        config_handler.set_preferences(interval, selected_theme, font_size)
         self.app.apply_preferences()
         messagebox.showinfo(translator.translate("success"), translator.translate("save_success"))
         self.window.destroy()
@@ -535,7 +553,7 @@ class ConfigWindowInitial:
 
         self.window = tk.Toplevel(master)
         self.window.title(translator.translate("enter_server_details"))
-        self.window.geometry("400x350")
+        self.window.geometry("450x400")
         self.window.grab_set()
 
         self.window.columnconfigure(1, weight=1)
@@ -592,9 +610,10 @@ class ConfigWindowInitial:
 
         interval = DEFAULT_AUTO_REFRESH_INTERVAL
         selected_theme = DEFAULT_THEME
+        font_size = DEFAULT_FONT_SIZE
 
         config_handler.set_server_details(host, port, username, password)
-        config_handler.set_preferences(interval, selected_theme)
+        config_handler.set_preferences(interval, selected_theme, font_size)
 
         self.app.initialize_application()
 
@@ -620,8 +639,11 @@ class PM2MonitorApp:
         self.preferences = config_handler.get_preferences()
         self.auto_refresh_interval = self.preferences['auto_refresh_interval']
         self.theme = self.preferences['theme']
+        self.font_size = self.preferences.get('font_size', DEFAULT_FONT_SIZE)
 
         self.style = Style(theme=self.theme)
+
+        self.font_family = "Helvetica"
 
         if not config_handler.is_configured():
             print("Server configuration not found. Prompting user to enter server details.")
@@ -656,6 +678,74 @@ class PM2MonitorApp:
         self.setup_ui()
         self.apply_preferences()
         self.refresh_services()
+
+        self.root.bind('<Control-MouseWheel>', self.zoom_with_mousewheel)
+        self.root.bind('<Control-Key-minus>', self.zoom_out)
+        self.root.bind('<Control-Key-underscore>', self.zoom_out)
+        self.root.bind('<Control-Key-equal>', self.zoom_in)
+        self.root.bind('<Control-Key-plus>', self.zoom_in)
+        self.root.bind('<Control-Key-0>', self.reset_zoom)
+
+        self.root.bind('<Command-MouseWheel>', self.zoom_with_mousewheel)
+        self.root.bind('<Command-Key-minus>', self.zoom_out)
+        self.root.bind('<Command-Key-underscore>', self.zoom_out)
+        self.root.bind('<Command-Key-equal>', self.zoom_in)
+        self.root.bind('<Command-Key-plus>', self.zoom_in)
+        self.root.bind('<Command-Key-0>', self.reset_zoom)
+
+    def zoom_in(self, event=None):
+        if self.font_size < 30:
+            self.font_size += 1
+            self.update_fonts()
+            config_handler.config['font_size'] = self.font_size
+            config_handler.save_config()
+
+    def zoom_out(self, event=None):
+        if self.font_size > 6:
+            self.font_size -= 1
+            self.update_fonts()
+            config_handler.config['font_size'] = self.font_size
+            config_handler.save_config()
+
+    def reset_zoom(self, event=None):
+        self.font_size = DEFAULT_FONT_SIZE
+        self.update_fonts()
+        config_handler.config['font_size'] = self.font_size
+        config_handler.save_config()
+
+    def zoom_with_mousewheel(self, event):
+        if event.delta > 0:
+            self.zoom_in()
+        else:
+            self.zoom_out()
+
+    def update_fonts(self):
+        new_font = (self.font_family, self.font_size)
+
+        self.style.configure('TLabel', font=new_font)
+        self.style.configure('TButton', font=new_font)
+        self.style.configure('TEntry', font=new_font)
+        self.style.configure('TNotebook', font=new_font)
+        self.style.configure('TNotebook.Tab', font=new_font)
+        self.style.configure('TCombobox', font=new_font)
+        self.style.configure('Vertical.TScrollbar', font=new_font)
+        self.style.configure('Horizontal.TScrollbar', font=new_font)
+
+        if self.search_entry:
+            self.search_entry.config(font=new_font)
+
+        row_height = int(self.font_size * 2)
+        if not hasattr(self, 'tree_style'):
+            self.tree_style = ttk.Style()
+        self.tree_style.configure('Custom.Treeview', font=new_font, rowheight=row_height)
+        self.tree_style.configure('Custom.Treeview.Heading', font=new_font)
+
+        for col in self.columns:
+            self.tree.heading(col, text=translator.translate(col.lower().replace(" ", "_")))
+
+        self.tree.configure(style='Custom.Treeview')
+
+        self.tree.update_idletasks()
 
     def setup_ui(self):
         self.top_frame = Frame(self.root, padding=10)
@@ -736,11 +826,16 @@ class PM2MonitorApp:
         self.middle_frame.pack(fill=tk.BOTH, expand=True)
 
         self.columns = ('ID', 'App Name', 'Version', 'Status', 'CPU (%)', 'Memory (MB)', 'Uptime')
+
+        self.tree_style = ttk.Style()
+        self.tree_style.configure('Custom.Treeview', font=(self.font_family, self.font_size), rowheight=int(self.font_size * 2))
+        self.tree_style.configure('Custom.Treeview.Heading', font=(self.font_family, self.font_size))
+
         self.tree = Treeview(
             self.middle_frame,
             columns=self.columns,
             show='headings',
-            bootstyle="primary"
+            style='Custom.Treeview'
         )
         self.tree.pack(fill=tk.BOTH, expand=True, side=tk.LEFT)
 
@@ -767,7 +862,6 @@ class PM2MonitorApp:
         self.cpu_label = Label(
             self.resource_frame,
             textvariable=self.cpu_var,
-            font=("Helvetica", 12)
         )
         self.cpu_label.pack(side=tk.LEFT, padx=(0, 20))
 
@@ -775,7 +869,6 @@ class PM2MonitorApp:
         self.memory_label = Label(
             self.resource_frame,
             textvariable=self.memory_var,
-            font=("Helvetica", 12)
         )
         self.memory_label.pack(side=tk.LEFT, padx=(0, 20))
 
@@ -793,17 +886,17 @@ class PM2MonitorApp:
         self.status_var.set(translator.translate("last_updated", time="Never", host=self.ssh_details['host'], port=self.ssh_details['port']))
         self.status_label = Label(
             self.bottom_frame,
-            textvariable=self.status_var
+            textvariable=self.status_var,
         )
         self.status_label.pack(side=tk.LEFT, padx=(0, 10))
 
         self.all_services = []
         self.filtered_services = []
 
-        self.refresh_services()
-
         if self.auto_refresh_interval > 0:
             self.auto_refresh()
+
+        self.update_fonts()
 
     def prompt_server_config(self):
         config_window = ConfigWindowInitial(self.root, self)
@@ -815,7 +908,9 @@ class PM2MonitorApp:
     def apply_preferences(self):
         self.auto_refresh_interval = config_handler.config.get('auto_refresh_interval', DEFAULT_AUTO_REFRESH_INTERVAL)
         self.theme = config_handler.config.get('theme', DEFAULT_THEME)
+        self.font_size = config_handler.config.get('font_size', DEFAULT_FONT_SIZE)
         self.style.theme_use(self.theme)
+        self.update_fonts()
         self.refresh_services()
     
     def refresh_services(self):
