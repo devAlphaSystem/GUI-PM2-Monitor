@@ -23,13 +23,18 @@ def get_appdata_directory():
         return os.path.expanduser('~/Library/Application Support')
     else:
         return os.path.expanduser('~/.config')
+    
+if getattr(sys, 'frozen', False):
+    base_path = sys._MEIPASS
+else:
+    base_path = os.path.abspath(".")
 
 APP_NAME = 'GUI_PM2_Monitor'
 APPDATA_DIR = os.path.join(get_appdata_directory(), APP_NAME)
 os.makedirs(APPDATA_DIR, exist_ok=True)
 
 CONFIG_FILE = os.path.join(APPDATA_DIR, 'config.json')
-TRANSLATIONS_DIR = 'translations'
+TRANSLATIONS_DIR = os.path.join(base_path, 'translations')
 SUPPORTED_LANGUAGES = ['en', 'pt_br', 'es', 'fr', 'de']
 DEFAULT_AUTO_REFRESH_INTERVAL = 30
 DEFAULT_THEME = 'superhero'
