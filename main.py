@@ -170,6 +170,7 @@ class SSHClientWrapper:
         self.password = password
         self.client = None
         self.lock = threading.Lock()
+        self.connection_count = 0
         self.connect()
     
     def connect(self):
@@ -185,7 +186,8 @@ class SSHClientWrapper:
                 timeout=10
             )
             self.client.get_transport().set_keepalive(30)
-            print("SSH connection established.")
+            self.connection_count += 1
+            print(f"SSH connection established. Total connections: {self.connection_count}")
             self.check_required_commands()
         except paramiko.AuthenticationException:
             messagebox.showerror(translator.translate("authentication_error"), translator.translate("auth_error_message"))
@@ -445,66 +447,71 @@ class ConfigWindow:
         self.window.geometry("450x400")
         self.window.grab_set()
 
-        self.window.columnconfigure(1, weight=1)
+        self.window.columnconfigure(0, weight=1)
+        self.window.columnconfigure(1, weight=3)
 
         self.server_frame = Frame(self.window, padding=10)
-        self.server_frame.pack(fill=tk.X)
+        self.server_frame.grid(row=0, column=0, columnspan=2, sticky='ew')
+
+        self.server_frame.columnconfigure(1, weight=1)
 
         self.host_label = Label(self.server_frame, text=translator.translate("host"))
-        self.host_label.grid(row=0, column=0, padx=10, pady=(10, 5), sticky='e')
+        self.host_label.grid(row=0, column=0, padx=5, pady=5, sticky='e')
 
         self.host_var = tk.StringVar(value=self.app.ssh_details['host'])
         self.host_entry = Entry(self.server_frame, textvariable=self.host_var)
-        self.host_entry.grid(row=0, column=1, padx=10, pady=(10, 5), sticky='we')
+        self.host_entry.grid(row=0, column=1, padx=5, pady=5, sticky='ew')
 
         self.port_label = Label(self.server_frame, text=translator.translate("port"))
-        self.port_label.grid(row=1, column=0, padx=10, pady=5, sticky='e')
+        self.port_label.grid(row=1, column=0, padx=5, pady=5, sticky='e')
 
         self.port_var = tk.IntVar(value=self.app.ssh_details['port'])
         self.port_entry = Entry(self.server_frame, textvariable=self.port_var)
-        self.port_entry.grid(row=1, column=1, padx=10, pady=5, sticky='we')
+        self.port_entry.grid(row=1, column=1, padx=5, pady=5, sticky='ew')
 
         self.username_label = Label(self.server_frame, text=translator.translate("username"))
-        self.username_label.grid(row=2, column=0, padx=10, pady=5, sticky='e')
+        self.username_label.grid(row=2, column=0, padx=5, pady=5, sticky='e')
 
         self.username_var = tk.StringVar(value=self.app.ssh_details['username'])
         self.username_entry = Entry(self.server_frame, textvariable=self.username_var)
-        self.username_entry.grid(row=2, column=1, padx=10, pady=5, sticky='we')
+        self.username_entry.grid(row=2, column=1, padx=5, pady=5, sticky='ew')
 
         self.password_label = Label(self.server_frame, text=translator.translate("password"))
-        self.password_label.grid(row=3, column=0, padx=10, pady=5, sticky='e')
+        self.password_label.grid(row=3, column=0, padx=5, pady=5, sticky='e')
 
         self.password_var = tk.StringVar(value=self.app.ssh_details['password'])
         self.password_entry = Entry(self.server_frame, textvariable=self.password_var, show='*')
-        self.password_entry.grid(row=3, column=1, padx=10, pady=5, sticky='we')
+        self.password_entry.grid(row=3, column=1, padx=5, pady=5, sticky='ew')
 
         self.pref_frame = Frame(self.window, padding=10)
-        self.pref_frame.pack(fill=tk.X)
+        self.pref_frame.grid(row=1, column=0, columnspan=2, sticky='ew')
+
+        self.pref_frame.columnconfigure(1, weight=1)
 
         self.interval_label = Label(self.pref_frame, text=translator.translate("auto_refresh_interval"))
-        self.interval_label.grid(row=0, column=0, padx=10, pady=(20, 5), sticky='e')
+        self.interval_label.grid(row=0, column=0, padx=5, pady=5, sticky='e')
 
         self.interval_var = tk.IntVar(value=self.app.auto_refresh_interval)
         self.interval_entry = Entry(self.pref_frame, textvariable=self.interval_var)
-        self.interval_entry.grid(row=0, column=1, padx=10, pady=(20, 5), sticky='we')
+        self.interval_entry.grid(row=0, column=1, padx=5, pady=5, sticky='ew')
 
         self.theme_label = Label(self.pref_frame, text=translator.translate("theme"))
-        self.theme_label.grid(row=1, column=0, padx=10, pady=5, sticky='e')
+        self.theme_label.grid(row=1, column=0, padx=5, pady=5, sticky='e')
 
         self.theme_var = tk.StringVar(value=self.app.theme)
         self.theme_options = ['superhero', 'cyborg', 'darkly', 'flatly', 'journal', 'lumen', 'minty', 'pulse', 'sandstone', 'solar', 'united', 'yeti']
         self.theme_menu = ttk.Combobox(self.pref_frame, textvariable=self.theme_var, values=self.theme_options, state='readonly')
-        self.theme_menu.grid(row=1, column=1, padx=10, pady=5, sticky='we')
+        self.theme_menu.grid(row=1, column=1, padx=5, pady=5, sticky='ew')
 
         self.font_size_label = Label(self.pref_frame, text=translator.translate("font_size"))
-        self.font_size_label.grid(row=2, column=0, padx=10, pady=5, sticky='e')
+        self.font_size_label.grid(row=2, column=0, padx=5, pady=5, sticky='e')
 
         self.font_size_var = tk.IntVar(value=self.app.font_size)
         self.font_size_entry = Entry(self.pref_frame, textvariable=self.font_size_var)
-        self.font_size_entry.grid(row=2, column=1, padx=10, pady=5, sticky='we')
+        self.font_size_entry.grid(row=2, column=1, padx=5, pady=5, sticky='ew')
 
         self.save_button = Button(self.window, text=translator.translate("save"), command=self.save_config)
-        self.save_button.pack(pady=(10, 10))
+        self.save_button.grid(row=2, column=0, columnspan=2, pady=10)
 
     def save_config(self):
         host = self.host_var.get().strip()
@@ -556,38 +563,39 @@ class ConfigWindowInitial:
         self.window.geometry("450x400")
         self.window.grab_set()
 
-        self.window.columnconfigure(1, weight=1)
+        self.window.columnconfigure(0, weight=1)
+        self.window.columnconfigure(1, weight=3)
 
         self.host_label = Label(self.window, text=translator.translate("host"))
-        self.host_label.grid(row=0, column=0, padx=10, pady=(10, 5), sticky='e')
+        self.host_label.grid(row=0, column=0, padx=5, pady=10, sticky='e')
 
         self.host_var = tk.StringVar()
         self.host_entry = Entry(self.window, textvariable=self.host_var)
-        self.host_entry.grid(row=0, column=1, padx=10, pady=(10, 5), sticky='we')
+        self.host_entry.grid(row=0, column=1, padx=5, pady=10, sticky='ew')
 
         self.port_label = Label(self.window, text=translator.translate("port"))
-        self.port_label.grid(row=1, column=0, padx=10, pady=5, sticky='e')
+        self.port_label.grid(row=1, column=0, padx=5, pady=5, sticky='e')
 
         self.port_var = tk.IntVar(value=22)
         self.port_entry = Entry(self.window, textvariable=self.port_var)
-        self.port_entry.grid(row=1, column=1, padx=10, pady=5, sticky='we')
+        self.port_entry.grid(row=1, column=1, padx=5, pady=5, sticky='ew')
 
         self.username_label = Label(self.window, text=translator.translate("username"))
-        self.username_label.grid(row=2, column=0, padx=10, pady=5, sticky='e')
+        self.username_label.grid(row=2, column=0, padx=5, pady=5, sticky='e')
 
         self.username_var = tk.StringVar()
         self.username_entry = Entry(self.window, textvariable=self.username_var)
-        self.username_entry.grid(row=2, column=1, padx=10, pady=5, sticky='we')
+        self.username_entry.grid(row=2, column=1, padx=5, pady=5, sticky='ew')
 
         self.password_label = Label(self.window, text=translator.translate("password"))
-        self.password_label.grid(row=3, column=0, padx=10, pady=5, sticky='e')
+        self.password_label.grid(row=3, column=0, padx=5, pady=5, sticky='e')
 
         self.password_var = tk.StringVar()
         self.password_entry = Entry(self.window, textvariable=self.password_var, show='*')
-        self.password_entry.grid(row=3, column=1, padx=10, pady=5, sticky='we')
+        self.password_entry.grid(row=3, column=1, padx=5, pady=5, sticky='ew')
 
         self.save_button = Button(self.window, text=translator.translate("save_and_connect"), command=self.save_and_connect)
-        self.save_button.grid(row=4, column=0, columnspan=2, pady=(20, 10))
+        self.save_button.grid(row=4, column=0, columnspan=2, pady=20)
 
     def save_and_connect(self):
         host = self.host_var.get().strip()
@@ -629,6 +637,72 @@ class ConfigWindowInitial:
                 translator.translate("ssh_error_message", error="SSH connection failed.")
             )
 
+class TerminalWindow:
+    def __init__(self, master, ssh_client):
+        self.master = master
+        self.ssh_client = ssh_client
+
+        self.window = tk.Toplevel(master)
+        self.window.title("SSH Terminal")
+        self.window.geometry("800x400")
+
+        # Configure styles
+        style = ttk.Style()
+        style.configure("TText", background="black", foreground="green", font=("Courier", 10))
+        style.configure("TScrollbar", background="black")
+
+        self.terminal_display = tk.Text(
+            self.window,
+            bg='black',
+            fg='green',
+            insertbackground='green',
+            wrap='word',
+            state=tk.DISABLED,
+            font=("Courier", 10)
+        )
+        self.terminal_display.pack(fill=tk.BOTH, expand=True, padx=10, pady=(10, 0))
+
+        self.terminal_scrollbar = ttk.Scrollbar(
+            self.terminal_display,
+            command=self.terminal_display.yview,
+            style="TScrollbar"
+        )
+        self.terminal_display.configure(yscrollcommand=self.terminal_scrollbar.set)
+        self.terminal_scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+
+        self.terminal_input_var = tk.StringVar()
+        self.terminal_input = tk.Text(
+            self.window,
+            bg='black',
+            fg='green',
+            insertbackground='green',
+            font=("Courier", 10),
+            height=3
+        )
+        self.terminal_input.pack(fill=tk.X, padx=10, pady=(5, 10))
+        self.terminal_input.bind("<Return>", self.send_terminal_command)
+
+    def send_terminal_command(self, event=None):
+        command = self.terminal_input.get("1.0", tk.END).strip()
+        if not command:
+            return
+        self.append_terminal_output(f"> {command}\n")
+        self.terminal_input.delete("1.0", tk.END)
+        threading.Thread(target=self.execute_terminal_command, args=(command,), daemon=True).start()
+
+    def execute_terminal_command(self, command):
+        output = self.ssh_client.execute_command(command)
+        if output is not None:
+            self.append_terminal_output(output + "\n")
+        else:
+            self.append_terminal_output("Command execution failed.\n")
+
+    def append_terminal_output(self, text):
+        self.terminal_display.config(state=tk.NORMAL)
+        self.terminal_display.insert(tk.END, text)
+        self.terminal_display.see(tk.END)
+        self.terminal_display.config(state=tk.DISABLED)
+
 class PM2MonitorApp:
     def __init__(self, root):
         self.root = root
@@ -644,6 +718,8 @@ class PM2MonitorApp:
         self.style = Style(theme=self.theme)
 
         self.font_family = "Helvetica"
+
+        self.connection_count = 0
 
         if not config_handler.is_configured():
             print("Server configuration not found. Prompting user to enter server details.")
@@ -672,6 +748,8 @@ class PM2MonitorApp:
                 translator.translate("ssh_error_message", error="SSH connection failed during initialization.")
             )
             return
+
+        self.connection_count = self.ssh_client.connection_count
 
         self.initialized = True
 
@@ -714,10 +792,11 @@ class PM2MonitorApp:
         config_handler.save_config()
 
     def zoom_with_mousewheel(self, event):
-        if event.delta > 0:
-            self.zoom_in()
-        else:
-            self.zoom_out()
+        if event.state & 0x0004:
+            if event.delta > 0:
+                self.zoom_in()
+            else:
+                self.zoom_out()
 
     def update_fonts(self):
         new_font = (self.font_family, self.font_size)
@@ -766,34 +845,6 @@ class PM2MonitorApp:
 
         self.search_var.trace_add("write", lambda name, index, mode: self.filter_services())
 
-        self.start_button = Button(
-            self.top_frame,
-            text=translator.translate("start_service"),
-            command=lambda: self.service_control('start')
-        )
-        self.start_button.pack(side=tk.LEFT, padx=(0, 5))
-
-        self.stop_button = Button(
-            self.top_frame,
-            text=translator.translate("stop_service"),
-            command=lambda: self.service_control('stop')
-        )
-        self.stop_button.pack(side=tk.LEFT, padx=(0, 5))
-
-        self.restart_button = Button(
-            self.top_frame,
-            text=translator.translate("restart_service"),
-            command=lambda: self.service_control('restart')
-        )
-        self.restart_button.pack(side=tk.LEFT, padx=(0, 5))
-
-        self.view_logs_button = Button(
-            self.top_frame,
-            text=translator.translate("view_logs"),
-            command=self.view_logs
-        )
-        self.view_logs_button.pack(side=tk.LEFT, padx=(0, 5))
-
         self.restart_all_button = Button(
             self.top_frame,
             text=translator.translate("restart_all"),
@@ -814,6 +865,13 @@ class PM2MonitorApp:
             command=lambda: self.control_all('start')
         )
         self.start_all_button.pack(side=tk.LEFT, padx=(0, 5))
+
+        self.terminal_button = Button(
+            self.top_frame,
+            text=translator.translate("terminal"),
+            command=self.open_terminal_window
+        )
+        self.terminal_button.pack(side=tk.RIGHT, padx=(0, 10))
 
         self.config_button = Button(
             self.top_frame,
@@ -838,6 +896,9 @@ class PM2MonitorApp:
             style='Custom.Treeview'
         )
         self.tree.pack(fill=tk.BOTH, expand=True, side=tk.LEFT)
+
+        self.tree.bind("<Button-3>", self.show_context_menu)
+        self.tree.bind("<Button-2>", self.show_context_menu)
 
         for col in self.columns:
             self.tree.heading(
@@ -896,7 +957,68 @@ class PM2MonitorApp:
         if self.auto_refresh_interval > 0:
             self.auto_refresh()
 
+        self.create_context_menu()
+
         self.update_fonts()
+
+    def create_context_menu(self):
+        self.context_menu = tk.Menu(self.root, tearoff=0)
+        self.context_menu.add_command(label=translator.translate("start_service"), command=self.start_selected_service)
+        self.context_menu.add_command(label=translator.translate("stop_service"), command=self.stop_selected_service)
+        self.context_menu.add_command(label=translator.translate("restart_service"), command=self.restart_selected_service)
+        self.context_menu.add_separator()
+        self.context_menu.add_command(label=translator.translate("view_logs"), command=self.view_logs)
+
+    def start_selected_service(self):
+        selected_items = self.tree.selection()
+        if not selected_items:
+            messagebox.showwarning(translator.translate("no_selection"), translator.translate("select_service_warning"))
+            return
+        for item in selected_items:
+            svc = self.tree.item(item, 'values')
+            app_id = svc[0]
+            threading.Thread(
+                target=self.control_service_thread, 
+                args=('start', app_id), 
+                daemon=True
+            ).start()
+
+    def stop_selected_service(self):
+        selected_items = self.tree.selection()
+        if not selected_items:
+            messagebox.showwarning(translator.translate("no_selection"), translator.translate("select_service_warning"))
+            return
+        for item in selected_items:
+            svc = self.tree.item(item, 'values')
+            app_id = svc[0]
+            threading.Thread(
+                target=self.control_service_thread, 
+                args=('stop', app_id), 
+                daemon=True
+            ).start()
+
+    def restart_selected_service(self):
+        selected_items = self.tree.selection()
+        if not selected_items:
+            messagebox.showwarning(translator.translate("no_selection"), translator.translate("select_service_warning"))
+            return
+        for item in selected_items:
+            svc = self.tree.item(item, 'values')
+            app_id = svc[0]
+            threading.Thread(
+                target=self.control_service_thread, 
+                args=('restart', app_id), 
+                daemon=True
+            ).start()
+
+    def show_context_menu(self, event):
+        selected_item = self.tree.identify_row(event.y)
+        if selected_item:
+            self.tree.selection_set(selected_item)
+            self.context_menu.post(event.x_root, event.y_root)
+
+    def open_terminal_window(self):
+        TerminalWindow(self.root, self.ssh_client)
 
     def prompt_server_config(self):
         config_window = ConfigWindowInitial(self.root, self)
@@ -925,7 +1047,7 @@ class PM2MonitorApp:
             self.filter_services()
             self.cpu_var.set(translator.translate("cpu_usage", cpu=system_resources['CPU Usage (%)']))
             self.memory_var.set(translator.translate("memory_usage", memory=system_resources['Memory Usage (MB)']))
-            self.status_var.set(translator.translate("last_updated", time=datetime.now().strftime('%Y-%m-%d %H:%M:%S'), host=self.ssh_details['host'], port=self.ssh_details['port']))
+            self.status_var.set(translator.translate("last_updated", time=datetime.now().strftime('%Y-%m-%d %H:%M:%S'), host=self.ssh_details['host'], port=self.ssh_details['port'], connections=self.connection_count))
         self.refresh_button.config(state='normal')
     
     def filter_services(self):

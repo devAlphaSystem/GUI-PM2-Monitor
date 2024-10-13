@@ -10,7 +10,7 @@
   "start_all": "Start All",
   "config": "Config",
   "refresh": "Refresh",
-  "last_updated": "Last Updated: {time} | Connected to {host}:{port}",
+  "last_updated": "Last Updated: {time} | Connected to {host}:{port} | SSH Connections: {connections}",
   "cpu_usage": "CPU Usage: {cpu}%",
   "memory_usage": "Memory Usage: {memory}",
   "success": "Success",
@@ -37,7 +37,7 @@
   "no_logs": "No logs available or failed to fetch logs.",
   "log_not_found": "Log file path for {log_type} not found.",
   "config_title": "Configuration",
-  "auto_refresh_interval": "Auto-Refresh Interval (s):",
+  "auto_refresh_interval": "Refresh (seconds):",
   "theme": "Selected Theme:",
   "save": "Save",
   "invalid_input": "Invalid Input",
@@ -54,7 +54,7 @@
   "enter_server_details": "Enter Server Details",
   "missing_command": "Missing Command",
   "id": "ID",
-  "app_name": "App Name",
+  "app_name": "Service",
   "version": "Version",
   "status": "Status",
   "cpu_(%)": "CPU (%)",
@@ -64,5 +64,6 @@
   "host": "Host",
   "port": "Port",
   "username": "Username",
-  "password": "Password"
+  "password": "Password",
+  "terminal": "Terminal"
 }

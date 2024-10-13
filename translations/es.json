@@ -10,7 +10,7 @@
   "start_all": "Iniciar Todos",
   "config": "Configuración",
   "refresh": "Actualizar",
-  "last_updated": "Última Actualización: {time} | Conectado a {host}:{port}",
+  "last_updated": "Última Actualización: {time} | Conectado a {host}:{port} | Conexiones SSH: {connections}",
   "cpu_usage": "Uso de CPU: {cpu}%",
   "memory_usage": "Uso de Memoria: {memory}",
   "success": "Éxito",
@@ -37,7 +37,7 @@
   "no_logs": "No hay logs disponibles o falló al obtener los logs.",
   "log_not_found": "Ruta del archivo de log para {log_type} no encontrada.",
   "config_title": "Configuración",
-  "auto_refresh_interval": "Intervalo de Actualización (s):",
+  "auto_refresh_interval": "Actualizar (segundos):",
   "theme": "Tema Seleccionado:",
   "save": "Guardar",
   "invalid_input": "Entrada Inválida",
@@ -54,7 +54,7 @@
   "enter_server_details": "Ingrese los Detalles del Servidor",
   "missing_command": "Comando Ausente",
   "id": "ID",
-  "app_name": "Nombre de la App",
+  "app_name": "Servicio",
   "version": "Versión",
   "status": "Estado",
   "cpu_(%)": "CPU (%)",
@@ -64,5 +64,6 @@
   "host": "Host",
   "port": "Puerto",
   "username": "Usuario",
-  "password": "Contraseña"
+  "password": "Contraseña",
+  "terminal": "Terminal"
 }

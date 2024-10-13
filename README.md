@@ -16,6 +16,7 @@
 - **Service Details**: See detailed information about each service, including ID, name, status, CPU and memory usage, uptime, and log paths.
 - **Log Access**: View stdout and stderr logs for each service within the application.
 - **Search and Filter**: Easily search for services by name.
+- **Terminal**: Open a terminal window to execute commands on the server directly from the GUI.
 - **Sorting**: Sort services by any column, such as ID, name, status, CPU usage, etc.
 - **Auto-Refresh**: Automatically refresh service status at a user-defined interval.
 - **Internationalization (i18n)**: Supports multiple languages with easy translation setup.
@@ -59,6 +60,10 @@
    ```bash
    python main.py
    ```
+
+## Images
+
+![GUI PM2 Monitor](assets/screenshot.png)
 
 ## Usage
 

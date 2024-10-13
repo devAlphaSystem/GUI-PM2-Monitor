@@ -10,7 +10,7 @@
   "start_all": "Alle Starten",
   "config": "Konfiguration",
   "refresh": "Aktualisieren",
-  "last_updated": "Zuletzt Aktualisiert: {time} | Verbunden mit {host}:{port}",
+  "last_updated": "Zuletzt Aktualisiert: {time} | Verbunden mit {host}:{port} | SSH-Verbindungen: {connections}",
   "cpu_usage": "CPU-Auslastung: {cpu}%",
   "memory_usage": "Speicherauslastung: {memory}",
   "success": "Erfolg",
@@ -37,7 +37,7 @@
   "no_logs": "Keine Logs verfügbar oder Logs konnten nicht abgerufen werden.",
   "log_not_found": "Logdateipfad für {log_type} nicht gefunden.",
   "config_title": "Konfiguration",
-  "auto_refresh_interval": "Automatisches Aktualisierungsintervall (s):",
+  "auto_refresh_interval": "Aktualisieren (Sekunden):",
   "theme": "Ausgewähltes Thema:",
   "save": "Speichern",
   "invalid_input": "Ungültige Eingabe",
@@ -54,7 +54,7 @@
   "enter_server_details": "Serverdetails Eingeben",
   "missing_command": "Befehl Fehlend",
   "id": "ID",
-  "app_name": "App-Name",
+  "app_name": "Dienst",
   "version": "Version",
   "status": "Status",
   "cpu_(%)": "CPU (%)",
@@ -64,5 +64,6 @@
   "host": "Host",
   "port": "Port",
   "username": "Benutzername",
-  "password": "Passwort"
+  "password": "Passwort",
+  "terminal": "Terminal"
 }
