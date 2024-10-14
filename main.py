@@ -271,6 +271,7 @@ def get_pm2_services(ssh_client):
             services = []
             for svc in services_json:
                 memory_mb = round(svc.get('monit', {}).get('memory', 0) / (1024 * 1024), 2)
+                port = svc.get('pm2_env', {}).get('PORT', 'N/A')
                 services.append({
                     'ID': svc.get('pm_id'),
                     'App Name': svc.get('name'),
@@ -280,7 +281,8 @@ def get_pm2_services(ssh_client):
                     'Memory (MB)': memory_mb,
                     'Uptime': format_uptime(svc.get('pm2_env', {}).get('pm_uptime')),
                     'Out Log Path': svc.get('pm2_env', {}).get('pm_out_log_path', ''),
-                    'Error Log Path': svc.get('pm2_env', {}).get('pm_err_log_path', '')
+                    'Error Log Path': svc.get('pm2_env', {}).get('pm_err_log_path', ''),
+                    'PORT': port
                 })
             print(f"Retrieved {len(services)} PM2 services.")
             return services
@@ -845,12 +847,12 @@ class PM2MonitorApp:
 
         self.search_var.trace_add("write", lambda name, index, mode: self.filter_services())
 
-        self.restart_all_button = Button(
+        self.start_all_button = Button(
             self.top_frame,
-            text=translator.translate("restart_all"),
-            command=lambda: self.control_all('restart')
+            text=translator.translate("start_all"),
+            command=lambda: self.control_all('start')
         )
-        self.restart_all_button.pack(side=tk.LEFT, padx=(0, 5))
+        self.start_all_button.pack(side=tk.LEFT, padx=(0, 5))
 
         self.stop_all_button = Button(
             self.top_frame,
@@ -859,12 +861,12 @@ class PM2MonitorApp:
         )
         self.stop_all_button.pack(side=tk.LEFT, padx=(0, 5))
 
-        self.start_all_button = Button(
+        self.restart_all_button = Button(
             self.top_frame,
-            text=translator.translate("start_all"),
-            command=lambda: self.control_all('start')
+            text=translator.translate("restart_all"),
+            command=lambda: self.control_all('restart')
         )
-        self.start_all_button.pack(side=tk.LEFT, padx=(0, 5))
+        self.restart_all_button.pack(side=tk.LEFT, padx=(0, 5))
 
         self.terminal_button = Button(
             self.top_frame,
@@ -883,7 +885,7 @@ class PM2MonitorApp:
         self.middle_frame = Frame(self.root, padding=10)
         self.middle_frame.pack(fill=tk.BOTH, expand=True)
 
-        self.columns = ('ID', 'App Name', 'Version', 'Status', 'CPU (%)', 'Memory (MB)', 'Uptime')
+        self.columns = ('ID', 'App Name', 'Version', 'PORT', 'Status', 'CPU (%)', 'Memory (MB)', 'Uptime')
 
         self.tree_style = ttk.Style()
         self.tree_style.configure('Custom.Treeview', font=(self.font_family, self.font_size), rowheight=int(self.font_size * 2))
@@ -901,9 +903,10 @@ class PM2MonitorApp:
         self.tree.bind("<Button-2>", self.show_context_menu)
 
         for col in self.columns:
+            translated_col = translator.translate(col.lower().replace(" ", "_"))
             self.tree.heading(
                 col,
-                text=translator.translate(col.lower().replace(" ", "_")),
+                text=translated_col,
                 command=lambda _col=col: self.sort_column(_col, False)
             )
             self.tree.column(col, anchor='center', width=120)
@@ -1064,24 +1067,57 @@ class PM2MonitorApp:
         self.update_treeview()
     
     def update_treeview(self):
-        self.tree.delete(*self.tree.get_children())
-        for svc in self.filtered_services:
-            self.tree.insert('', 'end', values=(
-                svc['ID'],
-                svc['App Name'],
-                svc['Version'],
-                svc['Status'],
-                svc['CPU (%)'],
-                svc['Memory (MB)'],
-                svc['Uptime']
-            ))
+        print("Treeview update started")
+    
+        try:
+            existing_items = {self.tree.item(item)['values'][0]: item for item in self.tree.get_children()}
+            print(f"Existing items: {existing_items}")
+            new_ids = set()
+    
+            for svc in self.filtered_services:
+                app_id = svc['ID']
+                new_ids.add(app_id)
+                print(f"Processing service: {svc}")
+                if app_id in existing_items:
+                    print(f"Updating item with ID: {app_id}")
+                    self.tree.item(existing_items[app_id], values=(
+                        svc['ID'],
+                        svc['App Name'],
+                        svc['Version'],
+                        svc['PORT'],
+                        svc['Status'],
+                        svc['CPU (%)'],
+                        svc['Memory (MB)'],
+                        svc['Uptime']
+                    ))
+                else:
+                    print(f"Inserting new item with ID: {app_id}")
+                    self.tree.insert('', 'end', iid=app_id, values=(
+                        svc['ID'],
+                        svc['App Name'],
+                        svc['Version'],
+                        svc['PORT'],
+                        svc['Status'],
+                        svc['CPU (%)'],
+                        svc['Memory (MB)'],
+                        svc['Uptime']
+                    ))
+    
+            for app_id, item in existing_items.items():
+                if app_id not in new_ids:
+                    print(f"Deleting item with ID: {app_id}")
+                    self.tree.delete(item)
+        except Exception as e:
+            print(f"Exception occurred: {e}")
+        finally:
+            print("Treeview update finished")
     
     def sort_column(self, col, reverse):
         try:
-            if col in ['CPU (%)', 'Memory (MB)']:
+            if col in ['CPU (%)', 'Memory (MB)', 'PORT']:
                 sorted_data = sorted(
                     self.filtered_services, 
-                    key=lambda x: float(x[col]), 
+                    key=lambda x: float(x[col]) if x[col] != 'N/A' else -1, 
                     reverse=reverse
                 )
             elif col == 'ID':

@@ -65,5 +65,6 @@
   "port": "Port",
   "username": "Benutzername",
   "password": "Passwort",
-  "terminal": "Terminal"
+  "terminal": "Terminal",
+  "PORT": "PORT"
 }
