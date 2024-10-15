@@ -10,7 +10,7 @@
   "start_all": "Iniciar Todos",
   "config": "Configuración",
   "refresh": "Actualizar",
-  "last_updated": "Última Actualización: {time} | Conectado a {host}:{port} | Conexiones SSH: {connections}",
+  "last_updated": "Última Actualización: {time} | Conectado a {host}:{port}",
   "cpu_usage": "Uso de CPU: {cpu}%",
   "memory_usage": "Uso de Memoria: {memory}",
   "success": "Éxito",

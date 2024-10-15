@@ -10,7 +10,7 @@
   "start_all": "Démarrer Tout",
   "config": "Configuration",
   "refresh": "Rafraîchir",
-  "last_updated": "Dernière Mise à Jour : {time} | Connecté à {host}:{port} | Connexions SSH : {connections}",
+  "last_updated": "Dernière Mise à Jour : {time} | Connecté à {host}:{port}",
   "cpu_usage": "Utilisation du CPU : {cpu}%",
   "memory_usage": "Utilisation de la Mémoire : {memory}",
   "success": "Succès",

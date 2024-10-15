@@ -39,7 +39,7 @@ SUPPORTED_LANGUAGES = ['en', 'pt_br', 'es', 'fr', 'de']
 DEFAULT_AUTO_REFRESH_INTERVAL = 30
 DEFAULT_THEME = 'superhero'
 REQUIRED_COMMANDS = ['pm2', 'mpstat', 'free', 'top', 'awk', 'grep', 'tail']
-DEFAULT_FONT_SIZE = 10
+DEFAULT_FONT_SIZE = 12
 
 # -------------------- Internationalization (i18n) -------------------- #
 
@@ -152,10 +152,9 @@ class ConfigHandler:
             'font_size': self.config.get('font_size', DEFAULT_FONT_SIZE)
         }
     
-    def set_preferences(self, auto_refresh_interval, theme, font_size):
+    def set_preferences(self, auto_refresh_interval, theme):
         self.config['auto_refresh_interval'] = auto_refresh_interval
         self.config['theme'] = theme
-        self.config['font_size'] = font_size
         self.save_config()
 
 config_handler = ConfigHandler()
@@ -170,7 +169,6 @@ class SSHClientWrapper:
         self.password = password
         self.client = None
         self.lock = threading.Lock()
-        self.connection_count = 0
         self.connect()
     
     def connect(self):
@@ -186,8 +184,6 @@ class SSHClientWrapper:
                 timeout=10
             )
             self.client.get_transport().set_keepalive(30)
-            self.connection_count += 1
-            print(f"SSH connection established. Total connections: {self.connection_count}")
             self.check_required_commands()
         except paramiko.AuthenticationException:
             messagebox.showerror(translator.translate("authentication_error"), translator.translate("auth_error_message"))
@@ -505,13 +501,6 @@ class ConfigWindow:
         self.theme_menu = ttk.Combobox(self.pref_frame, textvariable=self.theme_var, values=self.theme_options, state='readonly')
         self.theme_menu.grid(row=1, column=1, padx=5, pady=5, sticky='ew')
 
-        self.font_size_label = Label(self.pref_frame, text=translator.translate("font_size"))
-        self.font_size_label.grid(row=2, column=0, padx=5, pady=5, sticky='e')
-
-        self.font_size_var = tk.IntVar(value=self.app.font_size)
-        self.font_size_entry = Entry(self.pref_frame, textvariable=self.font_size_var)
-        self.font_size_entry.grid(row=2, column=1, padx=5, pady=5, sticky='ew')
-
         self.save_button = Button(self.window, text=translator.translate("save"), command=self.save_config)
         self.save_button.grid(row=2, column=0, columnspan=2, pady=10)
 
@@ -541,16 +530,8 @@ class ConfigWindow:
             messagebox.showerror(translator.translate("invalid_theme"), translator.translate("invalid_theme_message"))
             return
 
-        try:
-            font_size = self.font_size_var.get()
-            if font_size < 6 or font_size > 30:
-                raise ValueError
-        except (tk.TclError, ValueError):
-            messagebox.showerror(translator.translate("invalid_input"), translator.translate("invalid_font_size_message"))
-            return
-
         config_handler.set_server_details(host, port, username, password)
-        config_handler.set_preferences(interval, selected_theme, font_size)
+        config_handler.set_preferences(interval, selected_theme)
         self.app.apply_preferences()
         messagebox.showinfo(translator.translate("success"), translator.translate("save_success"))
         self.window.destroy()
@@ -620,10 +601,9 @@ class ConfigWindowInitial:
 
         interval = DEFAULT_AUTO_REFRESH_INTERVAL
         selected_theme = DEFAULT_THEME
-        font_size = DEFAULT_FONT_SIZE
 
         config_handler.set_server_details(host, port, username, password)
-        config_handler.set_preferences(interval, selected_theme, font_size)
+        config_handler.set_preferences(interval, selected_theme)
 
         self.app.initialize_application()
 
@@ -721,8 +701,6 @@ class PM2MonitorApp:
 
         self.font_family = "Helvetica"
 
-        self.connection_count = 0
-
         if not config_handler.is_configured():
             print("Server configuration not found. Prompting user to enter server details.")
             self.prompt_server_config()
@@ -751,8 +729,6 @@ class PM2MonitorApp:
             )
             return
 
-        self.connection_count = self.ssh_client.connection_count
-
         self.initialized = True
 
         self.setup_ui()
@@ -774,14 +750,14 @@ class PM2MonitorApp:
         self.root.bind('<Command-Key-0>', self.reset_zoom)
 
     def zoom_in(self, event=None):
-        if self.font_size < 30:
+        if self.font_size < 16:
             self.font_size += 1
             self.update_fonts()
             config_handler.config['font_size'] = self.font_size
             config_handler.save_config()
 
     def zoom_out(self, event=None):
-        if self.font_size > 6:
+        if self.font_size > 10:
             self.font_size -= 1
             self.update_fonts()
             config_handler.config['font_size'] = self.font_size
@@ -1033,7 +1009,6 @@ class PM2MonitorApp:
     def apply_preferences(self):
         self.auto_refresh_interval = config_handler.config.get('auto_refresh_interval', DEFAULT_AUTO_REFRESH_INTERVAL)
         self.theme = config_handler.config.get('theme', DEFAULT_THEME)
-        self.font_size = config_handler.config.get('font_size', DEFAULT_FONT_SIZE)
         self.style.theme_use(self.theme)
         self.update_fonts()
         self.refresh_services()
@@ -1050,7 +1025,7 @@ class PM2MonitorApp:
             self.filter_services()
             self.cpu_var.set(translator.translate("cpu_usage", cpu=system_resources['CPU Usage (%)']))
             self.memory_var.set(translator.translate("memory_usage", memory=system_resources['Memory Usage (MB)']))
-            self.status_var.set(translator.translate("last_updated", time=datetime.now().strftime('%Y-%m-%d %H:%M:%S'), host=self.ssh_details['host'], port=self.ssh_details['port'], connections=self.connection_count))
+            self.status_var.set(translator.translate("last_updated", time=datetime.now().strftime('%Y-%m-%d %H:%M:%S'), host=self.ssh_details['host'], port=self.ssh_details['port']))
         self.refresh_button.config(state='normal')
     
     def filter_services(self):
