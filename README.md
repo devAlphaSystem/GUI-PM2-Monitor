@@ -142,6 +142,43 @@
   - The application checks for required commands on the server.
   - Install any missing commands to ensure full functionality.
 
+## Security and Antivirus
+
+Note: Some users may encounter antivirus warnings when running the GUI PM2 Monitor executable. This is a false positive and does not indicate any malicious behavior. Below, we provide explanations and steps to address these concerns.
+
+Why This Happens
+
+- Packaging with PyInstaller: The application is packaged using PyInstaller, a tool that bundles Python scripts into standalone executables. While PyInstaller is widely used for legitimate purposes, some antivirus software may flag PyInstaller-packaged executables due to the way they bundle dependencies and the executable structure, which can resemble patterns used by malware.
+
+- Heuristic Detection: Antivirus programs like Windows Defender use heuristic analysis to identify potential threats based on behavior and code patterns. Features in GUI PM2 Monitor such as SSH connections, process management, and log handling might inadvertently trigger these heuristics.
+
+## Run from Source
+
+Since the repository is public, you can run the application directly from the source code, which may reduce the likelihood of antivirus flags associated with executables:
+
+Clone the Repository:
+
+    git clone https://github.com/devAlphaSystem/gui-pm2-monitor.git
+    cd gui-pm2-monitor
+
+Install Dependencies:
+
+    pip install -r requirements.txt
+
+Run the Application:
+
+    python main.py
+
+## You can also package the application yourself using PyInstaller:
+
+Install PyInstaller:
+
+    pip install pyinstaller
+
+Create the Executable:
+
+    pyinstaller --onefile main.py
+
 ## Contributing
 
 Contributions are welcome! If you have ideas for improvements or have found bugs, feel free to:
