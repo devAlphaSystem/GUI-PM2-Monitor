@@ -1,6 +1,6 @@
 {
   "title": "PM2 Services Monitor",
-  "search": "Search...",
+  "search_placeholder": "Search...",
   "start_service": "Start Service",
   "stop_service": "Stop Service",
   "restart_service": "Restart Service",

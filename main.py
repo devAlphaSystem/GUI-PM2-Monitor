@@ -23,7 +23,7 @@ def get_appdata_directory():
         return os.path.expanduser('~/Library/Application Support')
     else:
         return os.path.expanduser('~/.config')
-    
+
 if getattr(sys, 'frozen', False):
     base_path = sys._MEIPASS
 else:
@@ -62,7 +62,7 @@ class Translator:
                 return 'de'
             elif lang.startswith('en'):
                 return 'en'
-        lang, _ = locale.getpreferredencoding(), None
+        lang, _ = locale.getdefaultlocale()
         if lang:
             lang = lang.lower()
             if 'pt' in lang:
@@ -266,8 +266,10 @@ def get_pm2_services(ssh_client):
             services_json = json.loads(output)
             services = []
             for svc in services_json:
-                memory_mb = round(svc.get('monit', {}).get('memory', 0) / (1024 * 1024), 2)
+                memory_bytes = svc.get('monit', {}).get('memory', 0)
+                memory_mb = round(memory_bytes / (1024 * 1024), 2)
                 port = svc.get('pm2_env', {}).get('PORT', 'N/A')
+                pm_uptime = svc.get('pm2_env', {}).get('pm_uptime')
                 services.append({
                     'ID': svc.get('pm_id'),
                     'App Name': svc.get('name'),
@@ -275,7 +277,7 @@ def get_pm2_services(ssh_client):
                     'Status': svc.get('pm2_env', {}).get('status'),
                     'CPU (%)': svc.get('monit', {}).get('cpu', 0),
                     'Memory (MB)': memory_mb,
-                    'Uptime': format_uptime(svc.get('pm2_env', {}).get('pm_uptime')),
+                    'Uptime': format_uptime(pm_uptime),
                     'Out Log Path': svc.get('pm2_env', {}).get('pm_out_log_path', ''),
                     'Error Log Path': svc.get('pm2_env', {}).get('pm_err_log_path', ''),
                     'PORT': port
@@ -338,7 +340,8 @@ def format_uptime(epoch_time):
     try:
         if not epoch_time:
             return "N/A"
-        uptime_seconds = (time.time() - (epoch_time / 1000))
+        current_time = time.time()
+        uptime_seconds = current_time - (epoch_time / 1000)
         if uptime_seconds < 0:
             return "N/A"
         days, remainder = divmod(int(uptime_seconds), 86400)
@@ -396,8 +399,8 @@ class LogWindow:
         self.notebook.add(self.stdout_frame, text="STDOUT Logs")
         self.notebook.add(self.stderr_frame, text="STDERR Logs")
 
-        self.stdout_text = tk.Text(self.stdout_frame, wrap=tk.NONE)
-        self.stdout_text.pack(fill=tk.BOTH, expand=True)
+        self.stdout_text = tk.Text(self.stdout_frame, wrap=tk.NONE, state=tk.DISABLED)
+        self.stdout_text.pack(fill=tk.BOTH, expand=True, side=tk.LEFT)
 
         self.stdout_scrollbar_y = Scrollbar(self.stdout_frame, orient=tk.VERTICAL, command=self.stdout_text.yview)
         self.stdout_text.configure(yscrollcommand=self.stdout_scrollbar_y.set)
@@ -407,8 +410,8 @@ class LogWindow:
         self.stdout_text.configure(xscrollcommand=self.stdout_scrollbar_x.set)
         self.stdout_scrollbar_x.pack(side=tk.BOTTOM, fill=tk.X)
 
-        self.stderr_text = tk.Text(self.stderr_frame, wrap=tk.NONE)
-        self.stderr_text.pack(fill=tk.BOTH, expand=True)
+        self.stderr_text = tk.Text(self.stderr_frame, wrap=tk.NONE, state=tk.DISABLED)
+        self.stderr_text.pack(fill=tk.BOTH, expand=True, side=tk.LEFT)
 
         self.stderr_scrollbar_y = Scrollbar(self.stderr_frame, orient=tk.VERTICAL, command=self.stderr_text.yview)
         self.stderr_text.configure(yscrollcommand=self.stderr_scrollbar_y.set)
@@ -423,17 +426,20 @@ class LogWindow:
 
     def fetch_logs(self, log_type, text_widget, log_path):
         if log_path:
-            command = f'tail -n 100 "{log_path}" | tac'
+            command = f'tail -n 100 "{log_path}"'
             output = self.ssh_client.execute_command(command)
             if output:
-                text_widget.insert(tk.END, output)
-                text_widget.config(state=tk.DISABLED)
+                self.append_text(text_widget, output)
             else:
-                text_widget.insert(tk.END, translator.translate("no_logs"))
-                text_widget.config(state=tk.DISABLED)
+                self.append_text(text_widget, translator.translate("no_logs"))
         else:
-            text_widget.insert(tk.END, translator.translate("log_not_found", log_type=log_type.upper()))
-            text_widget.config(state=tk.DISABLED)
+            self.append_text(text_widget, translator.translate("log_not_found", log_type=log_type.upper()))
+
+    def append_text(self, text_widget, text):
+        text_widget.config(state=tk.NORMAL)
+        text_widget.insert(tk.END, text)
+        text_widget.see(tk.END)
+        text_widget.config(state=tk.DISABLED)
 
 class ConfigWindow:
     def __init__(self, master, app):
@@ -513,7 +519,7 @@ class ConfigWindow:
         if not host or not username or not password:
             messagebox.showerror(translator.translate("invalid_input"), translator.translate("invalid_input_message"))
             return
-        if port <= 0 or port > 65535:
+        if not (0 < port <= 65535):
             messagebox.showerror(translator.translate("invalid_input"), translator.translate("invalid_input_message"))
             return
 
@@ -532,6 +538,7 @@ class ConfigWindow:
 
         config_handler.set_server_details(host, port, username, password)
         config_handler.set_preferences(interval, selected_theme)
+
         self.app.apply_preferences()
         messagebox.showinfo(translator.translate("success"), translator.translate("save_success"))
         self.window.destroy()
@@ -592,7 +599,7 @@ class ConfigWindowInitial:
                 translator.translate("invalid_input_message")
             )
             return
-        if port <= 0 or port > 65535:
+        if not (0 < port <= 65535):
             messagebox.showerror(
                 translator.translate("invalid_input"),
                 translator.translate("invalid_input_message")
@@ -628,10 +635,9 @@ class TerminalWindow:
         self.window.title("SSH Terminal")
         self.window.geometry("800x400")
 
-        # Configure styles
         style = ttk.Style()
-        style.configure("TText", background="black", foreground="green", font=("Courier", 10))
-        style.configure("TScrollbar", background="black")
+        style.configure("Terminal.TText", background="black", foreground="green", font=("Courier", 10))
+        style.configure("Terminal.TScrollbar", background="black")
 
         self.terminal_display = tk.Text(
             self.window,
@@ -645,14 +651,14 @@ class TerminalWindow:
         self.terminal_display.pack(fill=tk.BOTH, expand=True, padx=10, pady=(10, 0))
 
         self.terminal_scrollbar = ttk.Scrollbar(
-            self.terminal_display,
+            self.window,
+            orient=tk.VERTICAL,
             command=self.terminal_display.yview,
-            style="TScrollbar"
+            style="Terminal.TScrollbar"
         )
         self.terminal_display.configure(yscrollcommand=self.terminal_scrollbar.set)
         self.terminal_scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
 
-        self.terminal_input_var = tk.StringVar()
         self.terminal_input = tk.Text(
             self.window,
             bg='black',
@@ -663,6 +669,7 @@ class TerminalWindow:
         )
         self.terminal_input.pack(fill=tk.X, padx=10, pady=(5, 10))
         self.terminal_input.bind("<Return>", self.send_terminal_command)
+        self.terminal_input.bind("<Shift-Return>", self.insert_newline)
 
     def send_terminal_command(self, event=None):
         command = self.terminal_input.get("1.0", tk.END).strip()
@@ -671,6 +678,11 @@ class TerminalWindow:
         self.append_terminal_output(f"> {command}\n")
         self.terminal_input.delete("1.0", tk.END)
         threading.Thread(target=self.execute_terminal_command, args=(command,), daemon=True).start()
+        return "break"
+
+    def insert_newline(self, event=None):
+        self.terminal_input.insert(tk.END, "\n")
+        return "break"
 
     def execute_terminal_command(self, command):
         output = self.ssh_client.execute_command(command)
@@ -735,6 +747,9 @@ class PM2MonitorApp:
         self.apply_preferences()
         self.refresh_services()
 
+        self.bind_zoom_controls()
+
+    def bind_zoom_controls(self):
         self.root.bind('<Control-MouseWheel>', self.zoom_with_mousewheel)
         self.root.bind('<Control-Key-minus>', self.zoom_out)
         self.root.bind('<Control-Key-underscore>', self.zoom_out)
@@ -750,14 +765,14 @@ class PM2MonitorApp:
         self.root.bind('<Command-Key-0>', self.reset_zoom)
 
     def zoom_in(self, event=None):
-        if self.font_size < 16:
+        if self.font_size < 20:
             self.font_size += 1
             self.update_fonts()
             config_handler.config['font_size'] = self.font_size
             config_handler.save_config()
 
     def zoom_out(self, event=None):
-        if self.font_size > 10:
+        if self.font_size > 8:
             self.font_size -= 1
             self.update_fonts()
             config_handler.config['font_size'] = self.font_size
@@ -770,11 +785,10 @@ class PM2MonitorApp:
         config_handler.save_config()
 
     def zoom_with_mousewheel(self, event):
-        if event.state & 0x0004:
-            if event.delta > 0:
-                self.zoom_in()
-            else:
-                self.zoom_out()
+        if event.delta > 0 or event.num == 4:
+            self.zoom_in()
+        else:
+            self.zoom_out()
 
     def update_fonts(self):
         new_font = (self.font_family, self.font_size)
@@ -788,17 +802,18 @@ class PM2MonitorApp:
         self.style.configure('Vertical.TScrollbar', font=new_font)
         self.style.configure('Horizontal.TScrollbar', font=new_font)
 
-        if self.search_entry:
+        if hasattr(self, 'search_entry') and self.search_entry:
             self.search_entry.config(font=new_font)
 
-        row_height = int(self.font_size * 2)
+        row_height = max(int(self.font_size * 1.5), 20)
         if not hasattr(self, 'tree_style'):
             self.tree_style = ttk.Style()
         self.tree_style.configure('Custom.Treeview', font=new_font, rowheight=row_height)
         self.tree_style.configure('Custom.Treeview.Heading', font=new_font)
 
         for col in self.columns:
-            self.tree.heading(col, text=translator.translate(col.lower().replace(" ", "_")))
+            translated_col = translator.translate(col.lower().replace(" ", "_"))
+            self.tree.heading(col, text=translated_col)
 
         self.tree.configure(style='Custom.Treeview')
 
@@ -809,19 +824,18 @@ class PM2MonitorApp:
         self.top_frame.pack(side=tk.TOP, fill=tk.X)
 
         self.search_var = tk.StringVar()
-        self.placeholder_text = translator.translate("search") if "search" in translator.translations else "Search..."
+        self.placeholder_text = translator.translate("search_placeholder")
         self.search_var.set(self.placeholder_text)
         self.search_entry = Entry(
             self.top_frame,
             textvariable=self.search_var,
-            width=30
+            width=30,
+            foreground='grey'
         )
         self.search_entry.pack(side=tk.LEFT, padx=(0, 10))
         self.search_entry.bind("<FocusIn>", self.clear_placeholder)
         self.search_entry.bind("<FocusOut>", self.add_placeholder)
-        self.search_entry.config(foreground='grey')
-
-        self.search_var.trace_add("write", lambda name, index, mode: self.filter_services())
+        self.search_entry.bind("<KeyRelease>", lambda event: self.filter_services())
 
         self.start_all_button = Button(
             self.top_frame,
@@ -864,7 +878,7 @@ class PM2MonitorApp:
         self.columns = ('ID', 'App Name', 'Version', 'PORT', 'Status', 'CPU (%)', 'Memory (MB)', 'Uptime')
 
         self.tree_style = ttk.Style()
-        self.tree_style.configure('Custom.Treeview', font=(self.font_family, self.font_size), rowheight=int(self.font_size * 2))
+        self.tree_style.configure('Custom.Treeview', font=(self.font_family, self.font_size), rowheight=max(int(self.font_size * 1.5), 20))
         self.tree_style.configure('Custom.Treeview.Heading', font=(self.font_family, self.font_size))
 
         self.tree = Treeview(
@@ -885,7 +899,7 @@ class PM2MonitorApp:
                 text=translated_col,
                 command=lambda _col=col: self.sort_column(_col, False)
             )
-            self.tree.column(col, anchor='center', width=120)
+            self.tree.column(col, anchor='center', width=120, stretch=True)
 
         self.scrollbar = Scrollbar(
             self.middle_frame,
@@ -1005,29 +1019,31 @@ class PM2MonitorApp:
     
     def open_config_window(self):
         ConfigWindow(self.root, self)
-    
+
     def apply_preferences(self):
         self.auto_refresh_interval = config_handler.config.get('auto_refresh_interval', DEFAULT_AUTO_REFRESH_INTERVAL)
         self.theme = config_handler.config.get('theme', DEFAULT_THEME)
         self.style.theme_use(self.theme)
         self.update_fonts()
         self.refresh_services()
-    
+
     def refresh_services(self):
         self.refresh_button.config(state='disabled')
         threading.Thread(target=self.fetch_and_display, daemon=True).start()
-    
+
     def fetch_and_display(self):
         services = get_pm2_services(self.ssh_client)
         system_resources = get_system_resources(self.ssh_client)
         if services is not None:
             self.all_services = services
             self.filter_services()
-            self.cpu_var.set(translator.translate("cpu_usage", cpu=system_resources['CPU Usage (%)']))
-            self.memory_var.set(translator.translate("memory_usage", memory=system_resources['Memory Usage (MB)']))
+            cpu = system_resources.get('CPU Usage (%)', "N/A")
+            memory = system_resources.get('Memory Usage (MB)', "N/A")
+            self.cpu_var.set(translator.translate("cpu_usage", cpu=cpu))
+            self.memory_var.set(translator.translate("memory_usage", memory=memory))
             self.status_var.set(translator.translate("last_updated", time=datetime.now().strftime('%Y-%m-%d %H:%M:%S'), host=self.ssh_details['host'], port=self.ssh_details['port']))
         self.refresh_button.config(state='normal')
-    
+
     def filter_services(self):
         search_query = self.search_var.get().lower()
         if search_query == self.placeholder_text.lower():
@@ -1040,15 +1056,14 @@ class PM2MonitorApp:
                 if search_query in svc['App Name'].lower()
             ]
         self.update_treeview()
-    
+
     def update_treeview(self):
         print("Treeview update started")
-    
         try:
             existing_items = {self.tree.item(item)['values'][0]: item for item in self.tree.get_children()}
             print(f"Existing items: {existing_items}")
             new_ids = set()
-    
+
             for svc in self.filtered_services:
                 app_id = svc['ID']
                 new_ids.add(app_id)
@@ -1077,7 +1092,7 @@ class PM2MonitorApp:
                         svc['Memory (MB)'],
                         svc['Uptime']
                     ))
-    
+
             for app_id, item in existing_items.items():
                 if app_id not in new_ids:
                     print(f"Deleting item with ID: {app_id}")
@@ -1086,19 +1101,19 @@ class PM2MonitorApp:
             print(f"Exception occurred: {e}")
         finally:
             print("Treeview update finished")
-    
+
     def sort_column(self, col, reverse):
         try:
             if col in ['CPU (%)', 'Memory (MB)', 'PORT']:
                 sorted_data = sorted(
                     self.filtered_services, 
-                    key=lambda x: float(x[col]) if x[col] != 'N/A' else -1, 
+                    key=lambda x: float(x[col]) if isinstance(x[col], (int, float, str)) and x[col] != 'N/A' else -1, 
                     reverse=reverse
                 )
             elif col == 'ID':
                 sorted_data = sorted(
                     self.filtered_services, 
-                    key=lambda x: int(x[col]), 
+                    key=lambda x: int(x[col]) if isinstance(x[col], (int, float, str)) and x[col] != 'N/A' else -1, 
                     reverse=reverse
                 )
             elif col == 'Uptime':
@@ -1110,7 +1125,7 @@ class PM2MonitorApp:
             else:
                 sorted_data = sorted(
                     self.filtered_services, 
-                    key=lambda x: x[col].lower(), 
+                    key=lambda x: x[col].lower() if isinstance(x[col], str) else str(x[col]).lower(), 
                     reverse=reverse
                 )
             self.filtered_services = sorted_data
@@ -1119,7 +1134,7 @@ class PM2MonitorApp:
         except Exception as e:
             messagebox.showerror(translator.translate("error"), f"{translator.translate('sort_error')}: {e}")
             print(f"Error sorting column '{col}': {e}")
-    
+
     def parse_uptime(self, uptime_str):
         try:
             days, hours, minutes, seconds = 0, 0, 0, 0
@@ -1138,7 +1153,7 @@ class PM2MonitorApp:
             return total_seconds
         except:
             return 0
-    
+
     def service_control(self, action):
         selected_items = self.tree.selection()
         if not selected_items:
@@ -1152,7 +1167,7 @@ class PM2MonitorApp:
                 args=(action, app_id), 
                 daemon=True
             ).start()
-    
+
     def control_service_thread(self, action, app_id):
         control_service(
             action=action, 
@@ -1160,14 +1175,14 @@ class PM2MonitorApp:
             ssh_client=self.ssh_client, 
             refresh_callback=self.refresh_services
         )
-    
+
     def control_all(self, action):
         threading.Thread(
             target=self.control_all_thread, 
             args=(action,), 
             daemon=True
         ).start()
-    
+
     def control_all_thread(self, action):
         control_service(
             action=action, 
@@ -1175,27 +1190,27 @@ class PM2MonitorApp:
             ssh_client=self.ssh_client, 
             refresh_callback=self.refresh_services
         )
-    
+
     def auto_refresh(self):
         if self.auto_refresh_interval > 0:
             self.refresh_services()
             self.root.after(self.auto_refresh_interval * 1000, self.auto_refresh)
-    
+
     def on_closing(self):
         if messagebox.askokcancel(translator.translate("quit"), translator.translate("quit_message")):
             self.ssh_client.close()
             self.root.destroy()
-    
+
     def clear_placeholder(self, event):
         if self.search_var.get() == self.placeholder_text:
             self.search_entry.delete(0, tk.END)
             self.search_entry.config(foreground='black')
-    
+
     def add_placeholder(self, event):
         if not self.search_var.get():
             self.search_var.set(self.placeholder_text)
             self.search_entry.config(foreground='grey')
-    
+
     def view_logs(self):
         selected_items = self.tree.selection()
         if not selected_items:

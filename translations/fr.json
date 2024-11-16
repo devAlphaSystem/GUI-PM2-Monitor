@@ -1,6 +1,6 @@
 {
   "title": "Moniteur de Services PM2",
-  "search": "Rechercher...",
+  "search_placeholder": "Rechercher...",
   "start_service": "Démarrer le Service",
   "stop_service": "Arrêter le Service",
   "restart_service": "Redémarrer le Service",

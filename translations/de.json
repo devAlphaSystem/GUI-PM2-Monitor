@@ -1,6 +1,6 @@
 {
   "title": "PM2 Dienstmonitor",
-  "search": "Suchen...",
+  "search_placeholder": "Suchen...",
   "start_service": "Dienst Starten",
   "stop_service": "Dienst Stoppen",
   "restart_service": "Dienst Neustarten",
